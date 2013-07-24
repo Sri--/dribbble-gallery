@@ -1,6 +1,8 @@
 //Dribbble Gallery App using Backboned/jQuery/Underscore
 $(function(){
-var we;
+	//Global variables
+	var app;
+	var scrollDiv = document.getElementById('page-right');
 	//Click event attached to gallery options
 	//Also initializes MainView depending on option selected
 	$('.btn-mode').click(function(event){
@@ -9,17 +11,20 @@ var we;
 		if($target.attr('id') == $selected.attr('id')){
 
 		}else{
+			app = null;
 			$selected.removeClass().addClass("btn-mode");
 			$target.removeClass().addClass("sel-mode");
-			var app = new MainView;
+			scrollDiv.scrollTop = 0;
+			app = new MainView;
 		}
 	});
 
-	//Inifinite Scroll for Gallery Div
+	//Inifinite Scroll for gallery div
 	$('#page-right').scroll(function () { 
-	   if ($('#page-right').scrollTop() == $(document).height() - $('#page-right').height()) {
-	   }
-	//console.log($('#page-right').scrollTop() >= 0.3 * $('#page-right').height());
+		var a = scrollDiv.scrollTop; var b = scrollDiv.scrollHeight - scrollDiv.clientHeight; var c  =  a / b;
+		if(c > 0.99){
+			app.loadMore();
+		}
 	});
 
 	//Backbone Models
@@ -42,7 +47,7 @@ var we;
 			var params = _.extend({
 			  type:         'GET',
 			  dataType:     'jsonp',
-			  url:			this.url()+"?per_page=12&callback=?",
+			  url:			this.url()+"?per_page=9&page="+encodeURI(this.page)+"&callback=?",
 			  jsonp: 		this.parse, 
 			  processData:  false
 			}, options);
@@ -50,7 +55,7 @@ var we;
 		},
 		parse: function(response){
 			if(response && response.shots.length > 0){
-				this.page = response.page;
+				this.page = parseInt(response.page) + 1;
 				return response.shots;
 			}
 		}
@@ -69,7 +74,7 @@ var we;
 			var params = _.extend({
 			  type:         'GET',
 			  dataType:     'jsonp',
-			  url:			this.url()+"?per_page=12&callback=?",
+			  url:			this.url()+"?page="+encodeURI(this.page)+"?per_page=9&callback=?",
 			  jsonp: 		this.parse, 
 			  processData:  false
 			}, options);
@@ -77,7 +82,7 @@ var we;
 		},
 		parse: function(response){
 			if(response && response.shots.length > 0){
-				this.page = response.page;
+				this.page = parseInt(response.page) + 1;
 				return response.shots;
 			}
 		}
@@ -96,7 +101,7 @@ var we;
 			var params = _.extend({
 			  type:         'GET',
 			  dataType:     'jsonp',
-			  url:			this.url()+"?page="+encodeURI(this.page)+"&per_page=12&callback=?",
+			  url:			this.url()+"?page="+encodeURI(this.page)+"&per_page=9&callback=?",
 			  jsonp: 		this.parse,
 			  processData:  false
 			}, options);
@@ -110,35 +115,6 @@ var we;
 			}
 		}
 	});
-
-	/*
-	var CommentList = Backbone.Collection.extend({
-		model: CommentModel,
-		page: 1,
-		initialize: function(){
-			this.fetch( {reset: true} );
-		},
-		url: function(){
-			return "http://api.dribbble.com/shots/everyone";
-		},
-		sync: function(method, model, options) {
-			var params = _.extend({
-			  type:         'GET',
-			  dataType:     'jsonp',
-			  url:			this.url()+"?per_page=12&callback=?",
-			  jsonp: 		this.parse, 
-			  processData:  false
-			}, options);
-			return $.ajax(params);
-		},
-		parse: function(response){
-			if(response && response.shots.length > 0){
-				this.page = response.page;
-				return response.shots;
-			}
-		}
-	});
-	*/
 
 	//Backbone Views
 	var MainView = Backbone.View.extend({
@@ -155,31 +131,50 @@ var we;
 	        "click .shot-tile": "info"
 	    },
 	    loadData: function(selected){
-	    	var Collection;
 			switch(selected){
 				case "popular":
-					Collection = new PopularList;
+						this.collection = pop;
+						this.render(1);
 					break;
 				case "debuts":
-					Collection = new DebutList;
+						this.collection = deb;
+						this.render(1);
 					break;
 				case "everyone":
-					Collection = new EveryoneList;
+						this.collection = eve;
+						this.render(1);
 					break;
 				default:
-					Collection = this.collection;
+					alert("Connection to server not established");
 			}
-			Collection.bind('reset', function(){
-				this.collection = Collection;
-				this.render();
+	    },
+	    loadMore: function(){
+	    	console.log("LoadMore");
+	    	this.collection.fetch({reset: true});
+	    	this.collection.bind('reset', function(){
+				//this.collection = pop;
+				this.render(2);
 				}, this);
 	    },
-	    render: function(){
-	    	$(this.el).html("");
-	    	var template = _.template($("#shot_template").html());
-			this.collection.each(function(model) {
-            	$(this.el).append(template(model.attributes));
-        	}, this);
+	    render: function(mode){
+	    	var shot = _.template($("#shot_template").html());
+	    	var load = _.template($("#load_template").html());
+
+	    	switch(mode){
+	    		case 1:
+	    			$(this.el).html("");
+					this.collection.each(function(model) {
+	            		$(this.el).append(shot(model.attributes));
+	        		}, this);
+					break;
+				case 2:
+					$("#page-right-load").remove();
+	    			this.collection.each(function(model) {
+	            		$(this.el).append(shot(model.attributes));
+	        		}, this);
+					break;		
+	    	}
+			$(this.el).append(load);
 	    },
 	    info: function(event){
 	    	var $target = $(event.target);
@@ -206,7 +201,30 @@ var we;
 		}
 	});
 
-	/*
+	//Loading all the data up front as per challenge instructions
+	//Global variables
+	var pop = new PopularList;
+	var deb = new DebutList;
+	var eve = new EveryoneList;
+});
+
+/* Dynamic assignment of this.collection and fetching data
+			switch(selected){
+				case "popular":
+					Collection = new PopularList;
+					break;
+				case "debuts":
+					Collection = new DebutList;
+					break;
+				case "everyone":
+					Collection = new EveryoneList;
+					break;
+				default:
+					Collection = this.collection;
+			}
+*/
+
+/* Future Comment View
 	var CommentView = Backbone.View.extend({
 		el: $('div#page-left-comments'),
 		initialize: function(model){
@@ -216,5 +234,33 @@ var we;
 
 		}
 	});
+*/
+
+/* Future Comment Collection/Model
+	var CommentList = Backbone.Collection.extend({
+		model: CommentModel,
+		page: 1,
+		initialize: function(){
+			this.fetch( {reset: true} );
+		},
+		url: function(){
+			return "http://api.dribbble.com/shots/everyone";
+		},
+		sync: function(method, model, options) {
+			var params = _.extend({
+			  type:         'GET',
+			  dataType:     'jsonp',
+			  url:			this.url()+"?page="+encodeURI(this.page)+"?per_page=9&callback=?",
+			  jsonp: 		this.parse, 
+			  processData:  false
+			}, options);
+			return $.ajax(params);
+		},
+		parse: function(response){
+			if(response && response.shots.length > 0){
+				this.page = parseInt(response.page) + 1;
+				return response.shots;
+			}
+		}
+	});
 	*/
-});
