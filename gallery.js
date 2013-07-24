@@ -11,11 +11,10 @@ $(function(){
 		if($target.attr('id') == $selected.attr('id')){
 
 		}else{
-			app = null;
 			$selected.removeClass().addClass("btn-mode");
 			$target.removeClass().addClass("sel-mode");
 			scrollDiv.scrollTop = 0;
-			app = new MainView;
+			app = new MainView;		
 		}
 	});
 
