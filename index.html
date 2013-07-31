@@ -18,6 +18,10 @@
 			<div id="page-left-info" class="inner">
 				<h3>To view more details of a shot, click on it's image!</h3>
 			</div>
+			<h2>Comments</h2>
+			<div id="page-left-comments" class="inner">
+				<h3>Click on a shot to view its comments!</h3>
+			</div>
 		</div>
 		<div id="page-right">
 			<div id="page-right-gallery" class="inner">
@@ -31,7 +35,7 @@
 	<script type="text/template" id="shot_template">
 		<div class="shot-tile">
 			<div class="shot-img">
-				<img src="<%= image_teaser_url %>" title="<%= title %>" data-player="<%= player.name %>" data-views="<%= views_count %>" data-likes="<%= likes_count %>" data-comments="<%= comments_count %>" data-time="<%= created_at %>"></img>
+				<img src="<%= image_teaser_url %>" id="<%= id %>" title="<%= title %>" data-player="<%= player.name %>" data-views="<%= views_count %>" data-likes="<%= likes_count %>" data-comments="<%= comments_count %>" data-time="<%= created_at %>"></img>
 			</div>
 			<div class="shot-info">
 			<%= likes_count %> Likes | <%= comments_count %> Comments	
@@ -50,6 +54,11 @@
 		<h3>Likes: <%= likes_count %></h3>
 		<h3>Comments <%= comments_count %></h3>
 		<h3>Time: <%= created_at %></h3>
+	</script>
+	<script type="text/template" id="comment_template">
+		<div class="shot-comment">
+			<p><%= body %></p>
+		</div>
 	</script>
 	<script type="text/javascript" src="gallery.js"></script>
 	</body>
