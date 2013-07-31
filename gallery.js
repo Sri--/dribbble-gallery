@@ -1,8 +1,9 @@
 //Dribbble Gallery App using Backboned/jQuery/Underscore
+var app;
 $(function(){
 	//Global variables
-	var app;
 	var scrollDiv = document.getElementById('page-right');
+	var scrolled = 0;
 	//Click event attached to gallery options
 	//Also initializes MainView depending on option selected
 	$('.btn-mode').click(function(event){
@@ -14,6 +15,7 @@ $(function(){
 			$selected.removeClass().addClass("btn-mode");
 			$target.removeClass().addClass("sel-mode");
 			scrollDiv.scrollTop = 0;
+			console.log("NEW VIEW");
 			app = new MainView;		
 		}
 	});
@@ -21,22 +23,26 @@ $(function(){
 	//Inifinite Scroll for gallery div
 	$('#page-right').scroll(function () { 
 		var a = scrollDiv.scrollTop; var b = scrollDiv.scrollHeight - scrollDiv.clientHeight; var c  =  a / b;
-		if(c > 0.99){
+		if(c > 0.99 && (scrolled == 0) ){
+			scrollDiv.scrollTop = 0.7 * b;
 			app.loadMore();
 		}
+		else if(c > 0.99 && (a - scrolled) > 50){
+			scrollDiv.scrollTop = 0.7 * b;
+			app.loadMore();
+		}
+		scrolled = parseInt(a);
 	});
 
 	//Backbone Models
-	var ShotModel = Backbone.Model.extend({
-	});
 	var CommentModel = Backbone.Model.extend({
+
 	});
 
 	//Backbone Collections
 	var PopularList = Backbone.Collection.extend({
-		model: ShotModel,
-		page: 1,
 		initialize: function(){
+			this.page = 1;
 			this.fetch( {reset: true} );
 		},
 		url: function(){
@@ -46,7 +52,7 @@ $(function(){
 			var params = _.extend({
 			  type:         'GET',
 			  dataType:     'jsonp',
-			  url:			this.url()+"?per_page=9&page="+encodeURI(this.page)+"&callback=?",
+			  url:			this.url()+"?page="+encodeURI(this.page)+"&per_page=9&callback=?",
 			  jsonp: 		this.parse, 
 			  processData:  false
 			}, options);
@@ -54,16 +60,15 @@ $(function(){
 		},
 		parse: function(response){
 			if(response && response.shots.length > 0){
-				this.page = parseInt(response.page) + 1;
+				this.page += 1;
 				return response.shots;
 			}
 		}
 	});
 
 	var DebutList = Backbone.Collection.extend({
-		model: ShotModel,
-		page: 1,
 		initialize: function(){
+			this.page = 1;
 			this.fetch( {reset: true} );
 		},
 		url: function(){
@@ -73,7 +78,7 @@ $(function(){
 			var params = _.extend({
 			  type:         'GET',
 			  dataType:     'jsonp',
-			  url:			this.url()+"?page="+encodeURI(this.page)+"?per_page=9&callback=?",
+			  url:			this.url()+"?page="+encodeURI(this.page)+"&per_page=9&callback=?",
 			  jsonp: 		this.parse, 
 			  processData:  false
 			}, options);
@@ -81,16 +86,15 @@ $(function(){
 		},
 		parse: function(response){
 			if(response && response.shots.length > 0){
-				this.page = parseInt(response.page) + 1;
+				this.page += 1;
 				return response.shots;
 			}
 		}
 	});
 
 	var EveryoneList = Backbone.Collection.extend({
-		model: ShotModel,
-		page: 1,
 		initialize: function(){
+			this.page = 1;
 			this.fetch( {reset: true} );
 		},
 		url: function(){
@@ -108,9 +112,36 @@ $(function(){
 		},
 		parse: function(response){
 			if(response && response.shots.length > 0){
-				//console.log("EVERYONE",response);
-				this.page = parseInt(response.page) + 1;
+				this.page += 1;
 				return response.shots;
+			}
+		}
+	});
+
+	var CommentList = Backbone.Collection.extend({
+		//model: CommentModel,
+		initialize: function(shot){
+			this.page = 1;
+			this.shot = shot.id;
+			this.fetch( {reset: true} );
+		},
+		url: function(){
+			return "http://api.dribbble.com/shots/";
+		},
+		sync: function(method, models, options) {
+			var params = _.extend({
+			  type:         'GET',
+			  dataType:     'jsonp',
+			  url:			this.url()+encodeURI(this.shot)+"\/comments?page="+encodeURI(this.page)+"&per_page=5&callback=?",
+			  jsonp: 		this.parse, 
+			  processData:  false
+			}, options);
+			return $.ajax(params);
+		},
+		parse: function(response){
+			if(response){
+				this.page = parseInt(response.page) + 1;
+				return response.comments;
 			}
 		}
 	});
@@ -168,24 +199,34 @@ $(function(){
 					break;
 				case 2:
 					$("#page-right-load").remove();
+					console.log(this.collection);
 	    			this.collection.each(function(model) {
 	            		$(this.el).append(shot(model.attributes));
 	        		}, this);
-					break;		
+					break;
+				default:
+					alert("Loading failed! Please check your connection.");
 	    	}
 			$(this.el).append(load);
 	    },
 	    info: function(event){
 	    	var $target = $(event.target);
+	    	var $shot_selected = $target.parents("div.shot-tile").find('div.shot-img img');
 	    	var model = {
-	    		title: $target.attr('title'),
-	    		player:{name: $target.attr('data-player')},
-	    		views_count: $target.attr('data-views'),
-	    		likes_count: $target.attr('data-likes'),
-	    		comments_count: $target.attr('data-comments'),
-	    		created_at: $target.attr('data-time')
+	    		id: $shot_selected.attr('id'),
+	    		title: $shot_selected.attr('title'),
+	    		player:{name: $shot_selected.attr('data-player')},
+	    		views_count: $shot_selected.attr('data-views'),
+	    		likes_count: $shot_selected.attr('data-likes'),
+	    		comments_count: $shot_selected.attr('data-comments'),
+	    		created_at: $shot_selected.attr('data-time')
 	    	};
 	    	var iView = new InfoView(model);
+	    	var cList = new CommentList({id: model.id});
+	    	cList.bind('reset', function(){
+				//this.collection = pop;
+				var cView = new CommentView(cList);
+				});
 	    }
 	});
 
@@ -197,6 +238,21 @@ $(function(){
 		render: function(model){
 	    	var template = _.template($("#info_template").html());
 	    	$(this.el).html(template(model));
+		}
+	});
+
+	var CommentView = Backbone.View.extend({
+		el: $('div#page-left-comments'),
+		initialize: function(collection){
+			this.collection = collection;
+			this.render();
+		},
+		render: function(){
+			var comment = _.template($("#comment_template").html());
+			$(this.el).html("");
+			this.collection.each(function(model) {
+	            $(this.el).append(comment(model.attributes));
+	        }, this);
 		}
 	});
 
@@ -236,30 +292,5 @@ $(function(){
 */
 
 /* Future Comment Collection/Model
-	var CommentList = Backbone.Collection.extend({
-		model: CommentModel,
-		page: 1,
-		initialize: function(){
-			this.fetch( {reset: true} );
-		},
-		url: function(){
-			return "http://api.dribbble.com/shots/everyone";
-		},
-		sync: function(method, model, options) {
-			var params = _.extend({
-			  type:         'GET',
-			  dataType:     'jsonp',
-			  url:			this.url()+"?page="+encodeURI(this.page)+"?per_page=9&callback=?",
-			  jsonp: 		this.parse, 
-			  processData:  false
-			}, options);
-			return $.ajax(params);
-		},
-		parse: function(response){
-			if(response && response.shots.length > 0){
-				this.page = parseInt(response.page) + 1;
-				return response.shots;
-			}
-		}
-	});
+	
 	*/
